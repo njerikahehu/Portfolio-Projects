@@ -1,0 +1,92 @@
+---
+title: "week5_lab_Catherine Ngothi"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: inline
+---
+```{r}
+library(tidyverse)
+library(completejourney)
+transactions <- transactions_sample
+transactions
+demographics
+products
+```
+
+# Plot 1: Purchase Trends by Month and Household Size
+
+```{r}
+transactions %>%
+  inner_join(demographics, by = "household_id") %>%
+  mutate(transaction_month = month(transaction_timestamp, label = TRUE)) %>%
+  group_by(transaction_month, household_size) %>%
+  summarize(total_sales = sum(sales_value), .groups = "drop") %>%
+ggplot(aes(x = transaction_month, y = total_sales, color = household_size)) +
+  geom_point(size = 2.5) +
+  labs(title = "Purchase Trends by Month and Household Size",
+       subtitle = "Tracking total sales trends by month for different household sizes. 
+                  Household with only 1 member spends the most throughout the year. 
+                  Sales increases in July and December on all households",
+       x = "Transaction Month",
+       y = "Total Sales Value") +
+  theme_minimal() 
+  
+  
+
+```
+
+
+## Plot: 2 Top 5 Product Categories by Market Share Over Time
+
+```{r}
+transactions %>%
+  inner_join(products, by = "product_id") %>%
+  mutate(transaction_month = month(transaction_timestamp, label = TRUE)) %>%
+  group_by(transaction_month, product_category) %>%
+  summarize(total_sales = sum(sales_value)) %>%
+  arrange(transaction_month, desc(total_sales)) %>%
+  group_by(transaction_month) %>%
+  slice_head(n = 5) %>%
+  ggplot(aes(x = transaction_month, y = total_sales, fill = product_category)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 5 Product Categories by Market Share Over Time",
+       subtitle = "Tracking the market share of the top 5 product categories over time",
+       x = "Transaction Month",
+       y = "Total Sales Value") +
+  theme_minimal()
+
+```
+
+## Plot 3: Top 5 Discounted Product Categories vs Age Group
+
+```{r}
+discount_data <- transactions %>%
+  inner_join(products, by = "product_id") %>%
+  inner_join(demographics, by = "household_id") %>%
+  group_by(product_category, age) %>%
+  summarize(total_discount = sum(retail_disc + coupon_disc + coupon_match_disc), .groups = "drop") %>%
+  arrange(product_category, desc(total_discount))
+top_discount_categories <- discount_data %>%
+  group_by(product_category) %>%
+  summarize(total_discount = sum(total_discount)) %>%
+  arrange(desc(total_discount)) %>%
+  head(5)
+discount_data <- discount_data %>%
+  filter(product_category %in% top_discount_categories$product_category)
+
+ggplot(discount_data, aes(x = reorder(product_category, -total_discount), y = total_discount, fill = age)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 5 Discounted Product Categories by Age Group",
+       subtitle = "Investigating how different age groups interact with these discounted products. Softdrinks have the highest discounted amount frequently bought by age group between 45-54. 
+65+ use the least discount amount",
+       x = "Product Category",
+       y = "Total Discount Amount") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.title = element_blank(),
+        legend.position = "bottom") +
+  coord_flip()
+```
+
+
